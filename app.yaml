@@ -1,0 +1,6 @@
+name: Nishi Daak
+icon: 👁️
+description: A Bengali night spirit on your shelf. It calls your name twice, in lights. Never answer.
+
+bricks:
+  - arduino:web_ui

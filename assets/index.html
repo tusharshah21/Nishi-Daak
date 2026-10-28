@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nishi Daak</title>
+<style>
+  :root { --bg: #07060a; --fg: #c9c2d6; --dim: #6b6478; --glow: #ff3b2f; --card: #120f18; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(ellipse at top, #15101e, var(--bg) 70%); color: var(--fg);
+         font: 16px/1.5 Georgia, "Times New Roman", serif; min-height: 100vh; }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-weight: normal; letter-spacing: .3em; text-align: center; margin: 8px 0 0; text-transform: uppercase; }
+  .tag { text-align: center; color: var(--dim); font-style: italic; margin: 4px 0 24px; }
+  .eyes { display: flex; justify-content: center; gap: 56px; margin: 24px 0; }
+  .eye { width: 34px; height: 34px; border-radius: 50%; background: var(--glow); transition: opacity 1s, box-shadow 1s;
+         animation: blink 7s infinite; }
+  @keyframes blink { 0%, 96%, 100% { transform: scaleY(1); } 98% { transform: scaleY(.1); } }
+  .row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+  .seg { position: relative; width: 36px; height: 64px; }
+  .seg i { position: absolute; background: var(--glow); opacity: .08; border-radius: 3px; }
+  .seg i.on { opacity: 1; box-shadow: 0 0 8px var(--glow); }
+  .seg .a, .seg .d, .seg .g { left: 6px; width: 24px; height: 5px; }
+  .seg .a { top: 0; } .seg .g { top: 29px; } .seg .d { bottom: 0; }
+  .seg .b, .seg .c, .seg .e, .seg .f { width: 5px; height: 25px; }
+  .seg .f { left: 0; top: 4px; } .seg .b { right: 0; top: 4px; } .seg .e { left: 0; bottom: 4px; } .seg .c { right: 0; bottom: 4px; }
+  .status { text-align: center; color: var(--dim); font-size: 14px; margin: 12px 0 28px; }
+  section { background: var(--card); border: 1px solid #241d2e; border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  h2 { font-weight: normal; font-size: 15px; letter-spacing: .15em; text-transform: uppercase; color: var(--dim); margin: 0 0 12px; }
+  form { display: flex; gap: 8px; }
+  input { flex: 1; min-width: 0; background: #0b0910; color: var(--fg); border: 1px solid #2d2538; border-radius: 6px;
+          padding: 10px; font: inherit; }
+  button { background: #2a0f12; color: #ffb3ad; border: 1px solid #5a1a1f; border-radius: 6px; padding: 10px 14px;
+           font: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; }
+  .reply { margin-top: 12px; white-space: pre-wrap; }
+  .board { font-family: monospace; color: var(--glow); letter-spacing: .1em; margin-top: 8px; }
+  .entry { border-top: 1px solid #241d2e; padding: 10px 0; }
+  .entry:first-child { border-top: 0; }
+  .when { color: var(--dim); font-size: 13px; }
+  .small { display: flex; gap: 8px; margin-top: 12px; }
+  .small input, .small button { font-size: 14px; padding: 6px 10px; }
+  .health { text-align: center; color: var(--dim); font: 12px/1.4 monospace; margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Nishi Daak</h1>
+  <p class="tag">It calls your name twice. Never answer.</p>
+
+  <div class="eyes"><div class="eye" id="eyeL"></div><div class="eye" id="eyeR"></div></div>
+  <div class="row" title="spirit energy">
+    <div class="seg" id="seg"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i><i class="e"></i><i class="f"></i><i class="g"></i></div>
+  </div>
+  <p class="status" id="status" aria-live="polite">listening for the spirit...</p>
+
+  <section>
+    <h2>Seance</h2>
+    <form id="ask">
+      <input id="q" maxlength="300" placeholder="Ask the Nishi something..." aria-label="Your question" autocomplete="off">
+      <button id="askBtn">Ask</button>
+    </form>
+    <div class="reply" id="answer"></div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <section>
+    <h2>What the Nishi saw</h2>
+    <div id="log"><p class="when">Nothing yet. The night is young.</p></div>
+    <div class="small">
+      <input id="who" list="people" placeholder="name" aria-label="Name for a test call">
+      <datalist id="people"></datalist>
+      <button id="summon" type="button">Summon a test call</button>
+    </div>
+  </section>
+  <p class="health" id="health">checking health...</p>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  // Segments lit for digits 0..7
+  const DIGITS = ["abcdef", "bc", "abdeg", "abcdg", "bcfg", "acdfg", "acdefg", "abc"];
+
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; }
+
+  function render(s) {
+    const e = s.energy;
+    for (const eye of [$("eyeL"), $("eyeR")]) {
+      eye.style.opacity = e === 0 ? 0.06 : 0.15 + e * 0.12;
+      eye.style.boxShadow = `0 0 ${6 + e * 6}px ${e * 2}px var(--glow)`;
+    }
+    for (const seg of $("seg").children) seg.classList.toggle("on", DIGITS[e].includes(seg.className.replace(" on", "")));
+    $("status").textContent = [
+      s.demo_mode ? "DEMO MODE" : "",
+      s.presence_ok ? `${s.ble_count} presences nearby` : "the house is silent (presence service unreachable)",
+      s.night ? "night" : "day",
+      s.busy ? "the Nishi is calling..." : "",
+    ].filter(Boolean).join(" · ");
+    $("people").replaceChildren(...s.people.map(n => { const o = document.createElement("option"); o.value = n; return o; }));
+    if (s.log.length) $("log").replaceChildren(...s.log.map(x => {
+      const d = el("div", "entry");
+      d.append(el("div", "when", `${x.time} · ${x.name}`), el("div", "", x.tale));
+      return d;
+    }));
+  }
+
+  async function poll() {
+    try { render(await (await fetch("status")).json()); }
+    catch { $("status").textContent = "the board does not answer..."; }
+  }
+
+  $("ask").onsubmit = async ev => {
+    ev.preventDefault();
+    const q = $("q").value.trim();
+    if (!q) return;
+    $("askBtn").disabled = true;
+    $("answer").textContent = "The Nishi is thinking...";
+    $("board").textContent = "";
+    try {
+      const r = await (await fetch("ask?q=" + encodeURIComponent(q))).json();
+      $("answer").textContent = r.answer;
+      $("board").textContent = r.spelled ? "ON THE BOARD: " + r.spelled : "";
+    } catch { $("answer").textContent = "Only silence."; }
+    $("askBtn").disabled = false;
+  };
+
+  $("summon").onclick = async () => {
+    const r = await (await fetch("test_call?name=" + encodeURIComponent($("who").value))).json();
+    $("status").textContent = r.ok ? `Summoning ${r.name}...` : r.reason;
+  };
+
+  async function health() {
+    try {
+      const h = await (await fetch("health")).json();
+      $("health").textContent = [
+        `presence ${h.presence_ok ? "ok" : "DOWN"}`,
+        `llm ${h.llm_ok ? "ok" : "DOWN"}${h.model ? " (" + h.model + ")" : ""}`,
+        h.last_llm_latency_s != null ? `last reply ${h.last_llm_latency_s}s, ${h.last_tokens_per_s} tok/s` : "",
+        h.demo_mode ? "demo" : `night ${h.night_hours}`,
+        `away ${h.away_minutes} min`,
+      ].filter(Boolean).join(" · ");
+    } catch { $("health").textContent = "health: no answer"; }
+  }
+
+  poll();
+  health();
+  setInterval(poll, 4000);
+  setInterval(health, 20000);
+</script>
+</body>
+</html>

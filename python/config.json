@@ -1,0 +1,19 @@
+{
+  "host_ip": "192.168.1.50",
+  "presence_port": 5000,
+  "llm_port": 8080,
+  "language": "simple English with a little Hindi",
+  "utc_offset_minutes": 330,
+  "night_start_hour": 21,
+  "night_end_hour": 5,
+  "poll_seconds": 15,
+  "away_minutes": 20,
+  "demo_mode": false,
+  "ble_devices_per_energy_level": 2,
+  "fade_ms": 250,
+  "hold_ms": 400,
+  "max_spell_chars": 15,
+  "people": [
+    {"name": "Tushar", "mac": "9e:88:0a:23:c4:74"}
+  ]
+}
