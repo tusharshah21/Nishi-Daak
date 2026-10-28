@@ -6,10 +6,10 @@
 - RAM: 3.6 GiB total (the 4 GB variant), 1.8 GiB swap
 - Disk: `/` is 9.8 GB with 3.0 GB free (`/home` is on the same partition). Tight: llama.cpp build plus the 1B model need about 2.3 GB.
 - Bluetooth: `hci0` present, not rfkill-blocked
-- Wi-Fi interface: `wlan0`. Out of the box it was DOWN with no saved network; the home network (`Airtel_tush_9866`) was visible at signal 94.
+- Wi-Fi interface: `wlan0`. Out of the box it was DOWN with no saved network; the home network was visible at signal 94.
 - SSH: `ssh.service` was disabled out of the box. The board is reachable over USB with adb (`adb shell` logs in as `arduino`, no password), which is how the laptop key got onto it.
 - sudo: asks for a password
-- Network: joined `Airtel_tush_9866` with `sudo nmcli --ask device wifi connect ...`. IP `192.168.1.6` (DHCP), `wlan0` MAC `14:b5:cd:f0:d2:ff` (the real hardware MAC, not randomized). Laptop alias `ssh nishi` is in `~/.ssh/config`.
+- Network: joined the home Wi-Fi with `sudo nmcli --ask device wifi connect ...`. IP `192.168.1.6` (DHCP), `wlan0` MAC `14:b5:cd:f0:d2:ff` (the real hardware MAC, not randomized). Laptop alias `ssh nishi` is in `~/.ssh/config`.
 - First `sudo` forced a password change (the factory password had expired).
 - Temporary passwordless sudo: `/etc/sudoers.d/90-nishi-install`. **Removed** after the rebuild, cleanup and checks; `sudo -n true` now answers "a password is required". `visudo -c` also flagged the factory files `10-arduino-passwd`, `20-arduino-ssh`, `30-arduino-keyboard`, `80-arduino-sysupgrade` and `90-arduino-sysupgrade` as not mode 0440; they were left alone.
 - Free disk before install: 2.9 GB on `/`
@@ -21,10 +21,10 @@
 - Laptop self-check (`python tests/test_main.py`) passes: spelling cleanup, night hours, demo mode, arrivals, few-shot prompt shape, reply cleanup, `/health`, LLM-down fallback.
 
 - Presence service (Step D): `curl http://192.168.1.6:5000/latest` works from the laptop (the only route is `/latest`; `/` returns 404). First scan: 11 Wi-Fi MACs, 8 BLE devices, strongest -44 dBm. Known MACs: router `f4:27:56:41:ed:ef`, laptop `b8:f7:75:46:d3:d1`, and the board's own `wlan0` `14:b5:cd:f0:d2:ff` (arp-scan lists itself, so the app should ignore it).
-- Phone MAC by toggling Wi-Fi off/on: **false match, do not use.** Baseline 22:18 had 11 MACs; two "Wi-Fi off" scans at 22:24 both had 10, with only `92:40:41:bb:8e:89` gone, and I reported that as the phone. But the phone's Wi-Fi was never actually turned off. Another device (or a sleeping phone) happened to drop out of the scan in the same window. A later scan at 22:30, phone unlocked, had 9 MACs: `92:40:41:bb:8e:89` still gone and `9e:88:0a:23:c4:74` gone too. Devices on this LAN come and go from arp-scan on their own, so a single "it disappeared" diff proves nothing. Lessons: confirm the toggle actually happened, and read the MAC from the phone's Wi-Fi settings instead of inferring it.
+- Phone MAC by toggling Wi-Fi off/on: **false match, do not use.** Baseline 22:18 had 11 MACs; two "Wi-Fi off" scans at 22:24 both had 10, with only `92:40:41:bb:8e:89` gone, and I reported that as the phone. But the phone's Wi-Fi was never actually turned off. Another device (or a sleeping phone) happened to drop out of the scan in the same window. A later scan at 22:30, phone unlocked, had 9 MACs: `92:40:41:bb:8e:89` still gone and the phone's real MAC gone too. Devices on this LAN come and go from arp-scan on their own, so a single "it disappeared" diff proves nothing. Lessons: confirm the toggle actually happened, and read the MAC from the phone's Wi-Fi settings instead of inferring it.
 - BLE counts move by themselves (8, 5, 6 within 12 minutes with nothing changed), so they are only a rough energy signal.
 - Both services came up after the first install: `nishi-presence` and `nishi-llm` active, `llama-server` listening on `0.0.0.0:8080` with the model loaded.
-- Phone MAC read from the phone's settings: `9e:88:0a:23:c4:74` (private address, set to fixed), IP `192.168.1.3`. In `config.json` as "Tushar". Matching is case-insensitive: `main.py` lowercases both sides.
+- Phone MAC read from the phone's settings (private address, set to fixed), IP `192.168.1.3`. In `config.json` as "Tushar". Matching is case-insensitive: `main.py` lowercases both sides.
 - Cleanup, second try: deleted everything under `/opt/nishi/llama.cpp` except `build/bin` (20 files: `llama-server` plus its `.so` libraries and links). `ldd` finds every library, `/health` returns ok after restart. The installer still skips the rebuild because `build/bin/llama-server` exists.
 - Step E (`python tests/llm_check.py`, the app's real `ask_llm()` with persona, few-shot examples and `tidy()`): all three replies stayed in persona, no markdown, no AI talk, nothing for `tidy()` to remove beyond double spaces. The advice-bait question ("Should I buy a new phone?") was dodged ("Consider the stars, my child."). No Hindi words appeared, and the night tale did not mention the person's name.
 
