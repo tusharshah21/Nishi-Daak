@@ -31,10 +31,15 @@ def scan_wifi():
     return sorted({m.lower() for m in MAC_RE.findall(out)})
 
 
+BLE_LOOP = asyncio.new_event_loop()  # one loop for every scan: bleak keeps a D-Bus connection per loop
+
+
 def scan_ble():
     from bleak import BleakScanner
 
-    found = asyncio.run(BleakScanner.discover(timeout=BLE_SECONDS, return_adv=True))
+    # asyncio.run() made a new loop per scan and leaked one system D-Bus connection each time. At 256 root
+    # connections dbus refused everyone, and the board dropped off the network until power-cycled.
+    found = BLE_LOOP.run_until_complete(BleakScanner.discover(timeout=BLE_SECONDS, return_adv=True))
     rssis = [adv.rssi for _, adv in found.values()]  # addresses are dropped right here
     return len(rssis), max(rssis, default=None)
 

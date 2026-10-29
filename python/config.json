@@ -1,5 +1,5 @@
 {
-  "host_ip": "192.168.1.50",
+  "host_ip": "192.168.1.200",
   "presence_port": 5000,
   "llm_port": 8080,
   "language": "simple English with a little Hindi",
@@ -7,7 +7,7 @@
   "night_start_hour": 21,
   "night_end_hour": 5,
   "poll_seconds": 15,
-  "away_minutes": 20,
+  "away_minutes": 180,
   "demo_mode": false,
   "ble_devices_per_energy_level": 2,
   "fade_ms": 250,

@@ -56,7 +56,7 @@ Phones randomize their BLE addresses, so Bluetooth is only used as a count for "
    |---|---|---|
    | `demo_mode` | `false` | Every hour counts as night and `away_minutes` becomes 2, for filming in daylight. The page shows DEMO MODE. |
    | `night_start_hour`, `night_end_hour` | 21, 5 | Night calls only happen in this window (local time from `utc_offset_minutes`). |
-   | `away_minutes` | 20 | How long a phone must be gone before its return counts as an arrival. |
+   | `away_minutes` | 180 | How long a phone must be gone before its return counts as an arrival. Locked phones drop off Wi-Fi for long stretches, so short values greet people who never left. |
    | `fade_ms`, `hold_ms` | 250, 400 | Letter fade and hold on the matrix. Each letter takes `2*fade + hold + 150` ms (1.05 s by default). |
    | `max_spell_chars` | 15 | How much of a seance answer is spelled on the board. |
    | `ble_devices_per_energy_level` | 2 | Bluetooth devices needed per step of spirit energy (0..7). |

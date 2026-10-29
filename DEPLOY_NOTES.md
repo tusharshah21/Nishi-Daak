@@ -34,6 +34,7 @@
 - Locked-phone test, 6 rounds a minute apart (17:05 to 17:10 UTC), each round default scan, then patient scan, then ping: default 4/6, `--retry=4 --timeout=1500` 6/6, ping 6/6. Caveat: each round's ping may have kept the phone a little more awake for the next round.
 - Fix: `presence_service.py` now runs arp-scan with `--retry=4 --timeout=1500`. A scan takes about 13 s instead of 2 s; with the 5 s BLE scan and 15 s sleep, one cycle is about 33 s.
 - After a longer lock (about 1.5 hours later, 18:49 UTC) the phone was seen once, missed 13 s later, then `ping` failed with "No route to host": the phone had dropped off Wi-Fi entirely. No scan setting can see a disconnected phone. With `away_minutes: 20`, a phone that sleeps off Wi-Fi for 20+ minutes at home will count as an "arrival" when it wakes. Open question: phone-side setting (keep Wi-Fi on during sleep) or app-side rule.
+- 30-minute locked test (00:41 to 01:12 IST, polling the service's `/latest` every 30 s): seen 1 time out of 62. A locked phone is effectively invisible on this network, so the service cannot tell "asleep at home" from "away".
 
 ## Broke and what changed
 
@@ -41,6 +42,14 @@
 - Build leftovers cleanup, first try: I deleted `llama.cpp/build/bin/*.so` thinking they were only dev symlinks, but `libllama-server-impl.so` is a real library with no `.so.0` version, so `llama-server` no longer started. The source tree was already gone, so the only fix was a full rebuild (`install2.log`). Next time, keep `build/bin` untouched and delete everything else.
 - Laptop ran low on memory during the 47 min build and Claude Code killed the local SSH session and watcher; the installer survived because it ran under `nohup` on the board. From then on: launch with `nohup setsid ... &` and check with short single SSH commands.
 - `sudo systemctl enable --now ssh` failed with `sshd: no hostkeys available -- exiting`. The image ships without SSH host keys. Fix: `sudo ssh-keygen -A && sudo systemctl restart ssh`.
+- The board hung (ping ok, SSH refused, ports 5000 and 8080 down, adb "offline") and needed a power cycle. After it came back, both services started on their own, but DHCP gave it a new IP: `192.168.1.2` instead of `192.168.1.6`. A fixed IP is required before `host_ip` goes into `config.json`.
+- Fixed IP: static `192.168.1.200` set on the board with `nmcli con mod ... ipv4.method manual` (gateway and DNS `192.168.1.1`). A high address so the router's DHCP is unlikely to hand it out. `host_ip` and the laptop's `ssh nishi` alias now use it.
+- First `arduino-app-cli app start`: `fatal error: MsgPack.h: No such file or directory`. `sketch.yaml` listed no libraries; the Bridge needs `MsgPack`, `DebugLog`, `ArxContainer` and `ArxTypeTraits` (copied from Arduino's own examples) plus `fqbn: arduino:zephyr:unoq`.
+- Second start: a library download failed with `lookup downloads.arduino.cc on [2401:4900:...]:53: network is unreachable`. The router advertises IPv6 DNS servers but the board has no IPv6 default route. Fix: `nmcli con mod ... ipv6.ignore-auto-dns yes` and `nmcli con up`. `nmcli dev reapply` did not rewrite `/etc/resolv.conf`.
+- Third start worked: sketch compiled and uploaded, Python app running, web page at `http://192.168.1.200:7000`, `/health` reports presence ok, LLM ok, `away_minutes` 180.
+- `away_minutes` raised from 20 to 180 because of the locked-phone test above.
+- Root cause of both "board stuck" episodes: `presence_service.py` ran each BLE scan with `asyncio.run()`, a new event loop per scan, and bleak opened a new system D-Bus connection for each loop without closing the old one. The journal of the dead boot shows `The maximum number of active connections for UID 0 has been reached (max_connections_per_user=256)` from 20:05, about 15 h after boot, and from then on every BLE scan failed and other root services could not talk to D-Bus either. Fix: one event loop reused for every scan. Measured on the board: before, the service's socket count grew by about one per scan (7, then 8 twenty seconds later); after, it stayed at 6 across 8 scans.
+- App Lab apps do not start on boot by themselves. `arduino-app-cli properties set default user:nishi-daak` makes Nishi Daak the default app, which App Lab starts at boot.
 
 - (pre-deploy) Emoji removal left "whispers ." with a stray space; `tidy()` now pulls punctuation back onto the word.
 
