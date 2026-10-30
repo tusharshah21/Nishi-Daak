@@ -4,6 +4,13 @@
 
 An Arduino UNO Q that lives on a shelf and behaves like a Nishi, the night spirit of Bengali folklore. Built for the DEV Hacktoberfest Open-Source AI Challenge, Week 4 ("Ghost in the Machine"), Arduino category.
 
+![The LED matrix spelling TUSHAR, then TUSHAR again](docs/nishi-call.gif)
+
+- **Demo video (74 s):** [watch on Google Drive](https://drive.google.com/file/d/1u8dVJ5TkOvXM-yOYtAKwM5j3VuGyJZYs/view?usp=sharing)
+- **Write-up:** [Nishi Daak on DEV](https://dev.to/tushar_shah/nishi-daak-an-arduino-uno-q-that-calls-your-name-twice-when-you-come-home-late-local-gemma-no-4ib7)
+
+![The board's web page: spirit eyes, séance box and night log](docs/web-ui.png)
+
 ## The folklore
 
 In Bengal they say the Nishi comes late at night and calls your name in the voice of someone you love. It calls only twice. If you answer, you follow it into the dark and are never seen again. So if you hear your name at night, wait for the third call: a real person will always call a third time.
