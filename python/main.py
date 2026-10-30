@@ -72,9 +72,8 @@ def tidy(text):
 
 
 def spell_seconds(text):
-    # Mirrors the sketch: per letter 2*fade + hold + 150 ms gap, 700 ms per space.
-    letter = (2 * CFG["fade_ms"] + CFG["hold_ms"] + 150) / 1000
-    return sum(0.7 if c == " " else letter for c in text)
+    # Mirrors the sketch's marquee: 13 columns of screen plus 6 per character, one column every scroll_ms.
+    return (13 + 6 * len(text)) * CFG["scroll_ms"] / 1000
 
 
 def local_now():
@@ -177,7 +176,7 @@ def get_json(url, timeout):
 def loop():
     if not state["timing_sent"]:
         try:
-            Bridge.call("timing", CFG["fade_ms"], CFG["hold_ms"])
+            Bridge.call("timing", CFG["scroll_ms"])
             state["timing_sent"] = True
         except Exception as e:
             log.warning(f"timing not sent yet: {e}")
@@ -262,8 +261,7 @@ def api_health():
         "demo_mode": CFG["demo_mode"],
         "night_hours": f"{CFG['night_start_hour']}:00-{CFG['night_end_hour']}:00",
         "away_minutes": away_seconds() / 60,
-        "fade_ms": CFG["fade_ms"],
-        "hold_ms": CFG["hold_ms"],
+        "scroll_ms": CFG["scroll_ms"],
     }
 
 

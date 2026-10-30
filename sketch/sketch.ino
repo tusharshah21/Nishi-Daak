@@ -1,13 +1,14 @@
-// Nishi Daak: the Nishi's eyes and planchette on the UNO Q LED matrix.
-// Python calls spell(text), energy(0..7) and timing(fade_ms, hold_ms) over the Bridge. Callbacks only set state; loop() renders.
+// Nishi Daak: the Nishi's eyes and a scrolling name marquee on the UNO Q LED matrix.
+// Python calls spell(text), energy(0..7) and timing(scroll_ms) over the Bridge. Callbacks only set state; loop() renders.
 
 #include <Arduino_RouterBridge.h>
 #include <Arduino_LED_Matrix.h>
 
 const int ROWS = 8, COLS = 13;
-// Letter timing. Python sets fade/hold at startup via timing(); keep GAP_MS and SPACE_MS in sync with spell_seconds() in python/main.py.
-unsigned long FADE_MS = 250, HOLD_MS = 400;
-const unsigned long GAP_MS = 150, SPACE_MS = 700;
+// Marquee: text enters from the right edge and scrolls left one column every STEP_MS until it has left the screen.
+// Python sets STEP_MS at startup via timing(); keep CHAR_W and the formula in sync with spell_seconds() in python/main.py.
+unsigned long STEP_MS = 90;
+const int CHAR_W = 6;  // 5 columns of glyph + 1 blank
 
 // On the UNO Q, LED_BUILTIN is the red channel of RGB LED3 (active-low).
 #if defined(LED3_R)
@@ -38,8 +39,7 @@ const uint8_t FONT[][5] = {
 enum State { IDLE, SPELLING };
 State state = IDLE;
 String text;
-unsigned int idx = 0;
-unsigned long phaseStart = 0;
+unsigned long spellStart = 0;
 int energyLevel = 3;
 unsigned long nextBlink = 0, blinkUntil = 0, flickerUntil = 0;
 int flickerPixel = 0;
@@ -55,8 +55,7 @@ void redLed(bool on) {
 void spell(String t) {
   t.toUpperCase();
   text = t;
-  idx = 0;
-  phaseStart = millis();
+  spellStart = millis();
   state = SPELLING;
   redLed(true);
 }
@@ -65,41 +64,35 @@ void energy(int e) {
   energyLevel = constrain(e, 0, 7);
 }
 
-void timing(int fade_ms, int hold_ms) {
-  FADE_MS = constrain(fade_ms, 1, 2000);  // never 0: the fade math divides by it
-  HOLD_MS = constrain(hold_ms, 0, 5000);
+void timing(int scroll_ms) {
+  STEP_MS = constrain(scroll_ms, 20, 1000);  // never 0: the scroll math divides by it
 }
 
 // --- Rendering --------------------------------------------------------------
 
-void drawGlyph(char c, uint8_t level) {
+void drawGlyph(char c, int x) {
   const char *p = c ? strchr(GLYPHS, c) : nullptr;
   int g = p ? p - GLYPHS : 0;  // unknown characters render as a blank
-  for (int col = 0; col < 5; col++)
+  for (int col = 0; col < 5; col++) {
+    int fx = x + col;
+    if (fx < 0 || fx >= COLS) continue;  // clipped at the screen edges
     for (int row = 0; row < 7; row++)
-      if (FONT[g][col] >> row & 1) frame[row * COLS + 4 + col] = level;  // cols 4..8 are the center
+      if (FONT[g][col] >> row & 1) frame[row * COLS + fx] = 7;
+  }
 }
 
 void renderSpelling(unsigned long now) {
-  if (idx >= text.length()) {
+  int shift = (now - spellStart) / STEP_MS;
+  int len = text.length();
+  if (shift > COLS + len * CHAR_W) {  // the last letter has scrolled off the left edge
     state = IDLE;
     redLed(false);
     return;
   }
-  char c = text[idx];
-  unsigned long t = now - phaseStart;
-  unsigned long dur = c == ' ' ? SPACE_MS : 2 * FADE_MS + HOLD_MS + GAP_MS;
-  if (t >= dur) {
-    idx++;
-    phaseStart = now;
-    return;
+  for (int i = 0; i < len; i++) {
+    int x = COLS - shift + i * CHAR_W;
+    if (x > -CHAR_W && x < COLS) drawGlyph(text[i], x);
   }
-  if (c == ' ') return;
-  uint8_t level = 0;
-  if (t < FADE_MS) level = t * 7 / FADE_MS;
-  else if (t < FADE_MS + HOLD_MS) level = 7;
-  else if (t < 2 * FADE_MS + HOLD_MS) level = (2 * FADE_MS + HOLD_MS - t) * 7 / FADE_MS;
-  drawGlyph(c, level);
 }
 
 void renderIdle(unsigned long now) {

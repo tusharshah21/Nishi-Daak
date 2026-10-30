@@ -25,8 +25,8 @@ main.LOG_PATH = os.devnull  # never touch the real night log
 assert main.clean("Hello, wörld!  how are you?") == "HELLO W RLD! HOW ARE YOU?"
 assert main.clean("the night is long and dark", 15) == "THE NIGHT IS"
 assert main.clean("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 10) == "ABCDEFGHIJ"
-main.CFG["fade_ms"], main.CFG["hold_ms"] = 250, 400
-assert abs(main.spell_seconds("AB C") - (1.05 * 3 + 0.7)) < 1e-9
+main.CFG["scroll_ms"] = 90
+assert abs(main.spell_seconds("AB C") - (13 + 6 * 4) * 0.09) < 1e-9
 
 # tidy: markdown, emojis, AI talk, 3 sentences, Hindi kept
 assert main.tidy("**Boo!** 👻 I see you.") == "Boo! I see you."

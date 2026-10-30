@@ -10,8 +10,7 @@
   "away_minutes": 180,
   "demo_mode": false,
   "ble_devices_per_energy_level": 2,
-  "fade_ms": 250,
-  "hold_ms": 400,
+  "scroll_ms": 90,
   "max_spell_chars": 15,
   "people": [
     {"name": "Tushar", "mac": "aa:bb:cc:dd:ee:ff"}

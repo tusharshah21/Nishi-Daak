@@ -18,7 +18,7 @@ In Bengal they say the Nishi comes late at night and calls your name in the voic
 ## What it does
 
 - **Idle:** two glowing eyes on the board's 8x13 LED matrix. They blink and flicker, and their brightness ("spirit energy") follows how many Bluetooth devices are nearby. With no energy, only a faint stray light flickers now and then.
-- **Night call:** when a family member's phone rejoins the home Wi-Fi at night after being away, the matrix spells their name letter by letter, twice, like a planchette, and the red LED glows. A local Gemma model then writes a short, eerie but harmless tale of what the Nishi saw following them home, saved to a night log.
+- **Night call:** when a family member's phone rejoins the home Wi-Fi at night after being away, their name scrolls across the matrix as a marquee, twice, and the red LED glows. A local Gemma model then writes a short, eerie but harmless tale of what the Nishi saw following them home, saved to a night log.
 - **Seance:** open the board's web page on any phone on the home Wi-Fi and ask the Nishi a question. Gemma answers in character and a short version (15 characters by default) is spelled on the matrix.
 - **Fully offline.** No cloud APIs, no accounts, nothing leaves the house.
 
@@ -34,7 +34,7 @@ In Bengal they say the Nishi comes late at night and calls your name in the voic
 
 | Part | File | Runs on |
 |---|---|---|
-| Matrix eyes and planchette | `sketch/sketch.ino` | STM32 MCU |
+| Matrix eyes and name marquee | `sketch/sketch.ino` | STM32 MCU |
 | App logic, web API | `python/main.py`, `python/config.json` | App Lab container (Linux side) |
 | Web page | `assets/index.html` | served by the `web_ui` brick, port 7000 |
 | Presence scanner | `host/presence_service.py` | Debian host, root, systemd |
@@ -64,7 +64,7 @@ Phones randomize their BLE addresses, so Bluetooth is only used as a count for "
    | `demo_mode` | `false` | Every hour counts as night and `away_minutes` becomes 2, for filming in daylight. The page shows DEMO MODE. |
    | `night_start_hour`, `night_end_hour` | 21, 5 | Night calls only happen in this window (local time from `utc_offset_minutes`). |
    | `away_minutes` | 180 | How long a phone must be gone before its return counts as an arrival. Locked phones drop off Wi-Fi for long stretches, so short values greet people who never left. |
-   | `fade_ms`, `hold_ms` | 250, 400 | Letter fade and hold on the matrix. Each letter takes `2*fade + hold + 150` ms (1.05 s by default). |
+   | `scroll_ms` | 90 | Marquee speed: milliseconds per column. A text of n characters takes `(13 + 6n) * scroll_ms` ms. |
    | `max_spell_chars` | 15 | How much of a seance answer is spelled on the board. |
    | `ble_devices_per_energy_level` | 2 | Bluetooth devices needed per step of spirit energy (0..7). |
 5. **Open the app in App Lab and press Run.**
@@ -75,7 +75,7 @@ Phones randomize their BLE addresses, so Bluetooth is only used as a count for "
 - **No night call when someone comes home:** sleeping iPhones often skip ARP replies, so a phone can look "away" or appear late. Raise `away_minutes` if calls trigger too often; for the demo use "Summon a test call". Arrivals only count after the app has seen the phone once, and only during night hours.
 - **Seance answers are canned lines:** the LLM is not reachable yet. The first start downloads the model, which takes a while: `journalctl -fu nishi-llm`. Then `curl http://<board-ip>:8080/health`.
 - **Energy stuck at 0 / "presence service unreachable":** `systemctl status nishi-presence`, `journalctl -u nishi-presence`, and `curl http://<board-ip>:5000/latest`. Check `host_ip` in `config.json`. Make sure Bluetooth is up: `bluetoothctl show`.
-- **Matrix stays dark:** check the sketch compiled in App Lab's console. With default timing each letter takes 1.05 s, so a call for "ASHA" lasts about 10 s.
+- **Matrix stays dark:** check the sketch compiled in App Lab's console. At the default speed a call for "ASHA   ASHA" scrolls for about 7 s.
 - **Health at a glance:** the line at the bottom of the page comes from `GET /health`: presence and LLM reachability, model name, last reply latency and tokens per second, demo mode and night hours.
 - **LLM latency and speed** are logged for every call (`llm latency ...` in the App Lab console, and `latency_s` / `tokens_per_s` in `night_log.json`).
 - **Small model drifts out of character:** the prompt carries two example exchanges (few-shot), and replies are cleaned of markdown, emojis and "as an AI" phrases and cut to 3 sentences before they are saved or spelled. If a reply is empty after cleaning, a canned line is used.
