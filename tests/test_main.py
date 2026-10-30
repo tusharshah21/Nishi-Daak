@@ -47,7 +47,7 @@ mac = "aa:bb:cc:dd:ee:01"
 assert main.arrivals({mac}, 0) == []              # first sighting is not an arrival
 assert main.arrivals({mac}, 15 * 60) == []        # still home
 assert main.arrivals(set(), 30 * 60) == []        # gone
-assert main.arrivals({mac}, 40 * 60) == ["Asha"]  # back after 25 min away
+assert main.arrivals({mac}, 40 * 60) == [("Asha", 25 * 60)]  # back after 25 min away
 
 # LLM down -> canned line, health says so
 main.LLM_BASE = "http://127.0.0.1:9"
@@ -93,5 +93,16 @@ assert h["llm_ok"] and h["model"] == "gemma-3-270m-it" and h["last_tokens_per_s"
 r = main.api_ask("who is there?")
 assert r["spelled"] == "THE NEEM TREE", r
 srv.shutdown()
+
+# night log time is when the scan caught the phone, not when the slow spell and tale finished
+import time  # noqa: E402
+main.spell = lambda text: True
+main.ask_llm = lambda prompt: ("A tale.", 1.0)
+main.night_call("Asha", caught=time.time() - 90, away_s=3 * 3600 + 600)
+e = main.entries[-1]
+lag = (main.local_now().replace(tzinfo=None) - main.datetime.datetime.strptime(e["time"], "%Y-%m-%d %H:%M:%S")).total_seconds()
+assert 89 <= lag <= 92 and e["away_min"] == 190 and e["test"] is False, (lag, e)
+main.night_call("Asha")
+assert main.entries[-1]["test"] is True and main.entries[-1]["away_min"] is None
 
 print("ok")

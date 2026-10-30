@@ -38,6 +38,13 @@
   .entry { border-top: 1px solid #241d2e; padding: 10px 0; }
   .entry:first-child { border-top: 0; }
   .when { color: var(--dim); font-size: 13px; }
+  .how { display: inline-flex; vertical-align: -3px; color: var(--glow); background: none; border: 0; padding: 4px; }
+  dialog { background: var(--card); color: var(--fg); border: 1px solid #241d2e; border-radius: 10px; padding: 16px;
+           width: min(420px, calc(100vw - 32px)); box-sizing: border-box; }
+  dialog::backdrop { background: rgba(0, 0, 0, .6); }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0 0 16px; }
+  dt { color: var(--dim); font-size: 14px; }
+  dd { margin: 0; }
   .small { display: flex; gap: 8px; margin-top: 12px; }
   .small input, .small button { font-size: 14px; padding: 6px 10px; }
   .health { text-align: center; color: var(--dim); font: 12px/1.4 monospace; margin-top: 8px; }
@@ -75,10 +82,32 @@
   </section>
   <p class="health" id="health">checking health...</p>
 </main>
+<dialog id="dlg" aria-label="Call details">
+  <h2>The call</h2>
+  <dl id="details"></dl>
+  <form method="dialog"><button>Close</button></form>
+</dialog>
 <script>
   const $ = id => document.getElementById(id);
   // Segments lit for digits 0..7
   const DIGITS = ["abcdef", "bc", "abdeg", "abcdg", "bcfg", "acdfg", "acdefg", "abc"];
+
+  const ICON_WIFI = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>';
+  const ICON_TEST = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/></svg>';
+
+  const duration = m => m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`;
+
+  function showDetails(x) {
+    const rows = [
+      ["Name", x.name],
+      [x.test ? "Summoned at" : "Caught at", x.time],
+      ["How", x.test ? "Test call from this page" : "Phone rejoined the home Wi-Fi"],
+      x.away_min != null && ["Away for", duration(x.away_min)],
+      x.latency_s != null && ["Tale written in", `${x.latency_s} s by local Gemma (${x.tokens_per_s} tok/s)`],
+    ].filter(Boolean);
+    $("details").replaceChildren(...rows.flatMap(([k, v]) => [el("dt", "", k), el("dd", "", v)]));
+    $("dlg").showModal();
+  }
 
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; e.textContent = text; return e; }
 
@@ -98,7 +127,16 @@
     $("people").replaceChildren(...s.people.map(n => { const o = document.createElement("option"); o.value = n; return o; }));
     if (s.log.length) $("log").replaceChildren(...s.log.map(x => {
       const d = el("div", "entry");
-      d.append(el("div", "when", `${x.time} · ${x.name}`), el("div", "", x.tale));
+      const when = el("div", "when", `${x.time} · ${x.name}`);
+      if (x.test || x.away_min != null) {  // entries from before the call details were logged get no icon
+        const icon = el("button", "how");
+        icon.type = "button";
+        icon.innerHTML = x.test ? ICON_TEST : ICON_WIFI;
+        icon.setAttribute("aria-label", "Call details");
+        icon.onclick = () => showDetails(x);
+        when.append(" ", icon);
+      }
+      d.append(when, el("div", "", x.tale));
       return d;
     }));
   }

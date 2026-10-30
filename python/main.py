@@ -93,7 +93,7 @@ def away_seconds():
 
 
 def arrivals(macs, now):
-    """Known people whose phone reappeared after being away. Updates last_seen."""
+    """(name, seconds away) for known people whose phone reappeared after being away. Updates last_seen."""
     back = []
     for p in CFG["people"]:
         mac = p["mac"].lower()
@@ -101,7 +101,7 @@ def arrivals(macs, now):
             continue
         prev = last_seen.get(mac)
         if prev is not None and now - prev > away_seconds():
-            back.append(p["name"])
+            back.append((p["name"], now - prev))
         last_seen[mac] = now  # first sighting after app start never counts as an arrival
     return back
 
@@ -154,14 +154,17 @@ def add_entry(entry):
         json.dump(entries, f, ensure_ascii=False, indent=1)
 
 
-def night_call(name):
+def night_call(name, caught=None, away_s=None):
+    """caught: unix time of the scan that saw the phone (None for a test call, which is caught right now)."""
+    when = local_now() if caught is None else local_now() - datetime.timedelta(seconds=time.time() - caught)
     spelled = clean(name)
     spell(f"{spelled}   {spelled}")
     tale, latency = ask_llm(
         f"{name} just came home late at night. In 3 short sentences, tell what the Nishi saw following {name} home."
     )
-    add_entry({"time": local_now().strftime("%Y-%m-%d %H:%M"), "name": name, "tale": tale, "latency_s": latency,
-               "tokens_per_s": state["llm_tokens_per_s"] if latency else None})
+    add_entry({"time": when.strftime("%Y-%m-%d %H:%M:%S"), "name": name, "tale": tale, "latency_s": latency,
+               "tokens_per_s": state["llm_tokens_per_s"] if latency else None,
+               "away_min": round(away_s / 60) if away_s else None, "test": caught is None})
 
 
 def get_json(url, timeout):
@@ -195,10 +198,11 @@ def loop():
         state["energy"] = energy
 
     macs = {m.lower() for m in data.get("wifi_macs", [])}
-    for name in arrivals(macs, time.time()):
+    caught = data.get("timestamp") or time.time()  # when the presence scan saw the phone, not when we polled
+    for name, away in arrivals(macs, caught):
         if is_night(local_now().hour):
-            log.info(f"night call for {name}")
-            threading.Thread(target=night_call, args=(name,), daemon=True).start()
+            log.info(f"night call for {name}, away {away / 60:.0f} min")
+            threading.Thread(target=night_call, args=(name, caught, away), daemon=True).start()
     time.sleep(CFG["poll_seconds"])
 
 
